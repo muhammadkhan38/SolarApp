@@ -66,8 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             prefixIcon: Icon(Icons.person_outline),
                           ),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty)
+                            if (v == null || v.trim().isEmpty) {
                               return 'Enter username or phone';
+                            }
                             return null;
                           },
                         ),

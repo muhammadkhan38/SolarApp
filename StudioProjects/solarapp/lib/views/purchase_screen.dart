@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/transaction.dart';
+import '../models/isar/solar_transaction.dart';
 import 'transaction_screen.dart';
 
 class PurchaseScreen extends StatelessWidget {
@@ -8,6 +8,6 @@ class PurchaseScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TransactionScreen(type: TransactionType.purchase);
+    return const TransactionScreen(kind: TransactionKind.purchase);
   }
 }

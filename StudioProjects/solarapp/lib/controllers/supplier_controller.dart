@@ -3,24 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/supplier.dart';
 
 class SupplierController extends ChangeNotifier {
-  final List<Supplier> _suppliers = [
-    Supplier(
-      id: 'S-001',
-      name: 'SunPower Traders',
-      phone: '042-0000001',
-      totalWatts: 6000,
-      lastPaymentDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastPaymentAmount: 500,
-    ),
-    Supplier(
-      id: 'S-002',
-      name: 'Bright Solar Supplies',
-      phone: '042-0000002',
-      totalWatts: 1800,
-      lastPaymentDate: DateTime.now().subtract(const Duration(days: 5)),
-      lastPaymentAmount: 0,
-    ),
-  ];
+  final List<Supplier> _suppliers = [];
 
   List<Supplier> get suppliers => List.unmodifiable(_suppliers);
 

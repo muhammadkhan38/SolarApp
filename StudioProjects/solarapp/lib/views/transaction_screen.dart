@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/activity_controller.dart';
-import '../controllers/customer_controller.dart';
+import '../controllers/contacts_controller.dart';
+import '../controllers/invoice_service.dart';
 import '../controllers/inventory_controller.dart';
-import '../controllers/supplier_controller.dart';
 import '../controllers/transaction_controller.dart';
 import '../models/activity_log.dart';
-import '../models/solar_panel.dart';
-import '../models/transaction.dart';
+import '../models/isar/product.dart';
+import '../models/isar/solar_transaction.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_theme.dart';
 import '../widgets/formatters.dart';
 import '../widgets/status_badge.dart';
 
 class TransactionScreen extends StatefulWidget {
-  const TransactionScreen({super.key, required this.type});
+  const TransactionScreen({super.key, required this.kind});
 
-  final TransactionType type;
+  final TransactionKind kind;
 
   @override
   State<TransactionScreen> createState() => _TransactionScreenState();
@@ -26,8 +26,8 @@ class TransactionScreen extends StatefulWidget {
 class _TransactionScreenState extends State<TransactionScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String? _selectedPartyId;
-  String? _selectedPanelId;
+  int? _selectedContactId;
+  int? _selectedProductId;
 
   final _quantityController = TextEditingController(text: '1');
   final _paidController = TextEditingController(text: '0');
@@ -43,20 +43,32 @@ class _TransactionScreenState extends State<TransactionScreen> {
   Widget build(BuildContext context) {
     final inventory = context.watch<InventoryController>();
     final tx = context.watch<TransactionController>();
+    final contacts = context.watch<ContactsController>();
 
-    final title = widget.type == TransactionType.purchase
-        ? 'Purchase'
-        : 'Sales';
-    final totalCount = tx.totalCountFor(widget.type);
-    final totalAmount = tx.totalAmountFor(widget.type);
+    final isPurchase = widget.kind == TransactionKind.purchase;
+    final title = isPurchase ? 'Purchase' : 'Sales';
+    final partyLabel = isPurchase ? 'Supplier' : 'Customer';
+    final totalCount = tx.totalCountFor(widget.kind);
+    final totalAmount = tx.totalAmountFor(widget.kind);
 
-    final partyItems = widget.type == TransactionType.purchase
-        ? context.watch<SupplierController>().suppliers
-        : context.watch<CustomerController>().customers;
+    final partyItems = isPurchase ? contacts.suppliers : contacts.customers;
+    final selectedContactId = partyItems.any((p) => p.id == _selectedContactId)
+        ? _selectedContactId
+        : null;
+    final selectedProductId =
+        inventory.panels.any((p) => p.id == _selectedProductId)
+        ? _selectedProductId
+        : null;
 
-    final selectedPanel = _selectedPanelId == null
-        ? null
-        : inventory.byId(_selectedPanelId!);
+    Product? selectedProduct;
+    if (selectedProductId != null) {
+      for (final p in inventory.panels) {
+        if (p.id == selectedProductId) {
+          selectedProduct = p;
+          break;
+        }
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -110,40 +122,58 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _selectedPartyId,
+                    DropdownButtonFormField<int>(
+                      // ignore: deprecated_member_use
+                      value: selectedContactId,
+                      isExpanded: true,
                       items: [
                         for (final p in partyItems)
                           DropdownMenuItem(
                             value: p.id,
-                            child: Text('${p.name} (${p.id})'),
+                            child: Text(
+                              '${p.name} (${p.code})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                       ],
-                      onChanged: (v) => setState(() => _selectedPartyId = v),
+                      onChanged: (v) => setState(() => _selectedContactId = v),
                       decoration: InputDecoration(
-                        hintText: widget.type == TransactionType.purchase
-                            ? 'Select Supplier'
-                            : 'Select Customer',
+                        hintText: 'Select $partyLabel',
                       ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Select one' : null,
+                      validator: (v) => (v == null) ? 'Select one' : null,
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => _createParty(context),
+                        icon: const Icon(Icons.person_add_alt_1_outlined),
+                        label: Text('Add $partyLabel'),
+                      ),
                     ),
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      value: _selectedPanelId,
+                    DropdownButtonFormField<int>(
+                      // ignore: deprecated_member_use
+                      value: selectedProductId,
+                      isExpanded: true,
                       items: [
                         for (final p in inventory.panels)
                           DropdownMenuItem(
                             value: p.id,
-                            child: Text('${p.panelName} (${p.wattsPerPanel}W)'),
+                            child: Text(
+                              isPurchase
+                                  ? '${p.panelName} (${p.wattsPerPanel}W)'
+                                  : '${p.panelName} (${p.wattsPerPanel}W, ${p.quantity} stock)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                       ],
-                      onChanged: (v) => setState(() => _selectedPanelId = v),
+                      onChanged: (v) => setState(() => _selectedProductId = v),
                       decoration: const InputDecoration(
                         hintText: 'Select Panel',
                       ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Select panel' : null,
+                      validator: (v) => (v == null) ? 'Select panel' : null,
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -155,7 +185,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             decoration: const InputDecoration(
                               hintText: 'Quantity',
                             ),
-                            validator: _validatePositiveInt,
+                            validator: (v) =>
+                                _validateQuantity(v, selectedProduct),
                             onChanged: (_) => setState(() {}),
                           ),
                         ),
@@ -175,10 +206,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         ),
                       ],
                     ),
-                    if (selectedPanel != null) ...[
+                    if (selectedProduct != null) ...[
                       const SizedBox(height: 12),
                       _ComputedRow(
-                        panel: selectedPanel,
+                        product: selectedProduct,
                         qtyText: _quantityController.text,
                         paidText: _paidController.text,
                       ),
@@ -195,11 +226,17 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           final ok = _formKey.currentState?.validate() ?? false;
                           if (!ok) return;
-                          final panel = inventory.byId(_selectedPanelId!);
-                          if (panel == null) return;
+                          if (_selectedContactId == null ||
+                              _selectedProductId == null) {
+                            return;
+                          }
+                          if (selectedProduct == null) {
+                            _showMessage(context, 'Select a valid panel.');
+                            return;
+                          }
 
                           final qty = int.parse(
                             _quantityController.text.trim(),
@@ -207,54 +244,54 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           final paid = double.parse(
                             _paidController.text.trim(),
                           );
-                          final party = partyItems.firstWhere(
-                            (p) => p.id == _selectedPartyId,
-                          );
+                          final total =
+                              selectedProduct.pricePerWatt *
+                              selectedProduct.wattsPerPanel *
+                              qty;
 
-                          context.read<TransactionController>().addTransaction(
-                            type: widget.type,
-                            partyId: party.id,
-                            partyName: party.name,
-                            panelId: panel.id,
-                            panelName: panel.panelName,
-                            wattsPerPanel: panel.wattsPerPanel,
-                            quantity: qty,
-                            pricePerWatt: panel.pricePerWatt,
-                            paidAmount: paid,
-                          );
-
-                          // Update inventory + ledgers.
-                          final stockDelta =
-                              widget.type == TransactionType.purchase
-                              ? qty
-                              : -qty;
-                          context.read<InventoryController>().adjustStock(
-                            panelId: panel.id,
-                            quantityDelta: stockDelta,
-                          );
-
-                          final wattsDelta = panel.wattsPerPanel * qty;
-                          if (widget.type == TransactionType.purchase) {
-                            context.read<SupplierController>().addWatts(
-                              party.id,
-                              wattsDelta,
+                          if (!isPurchase && qty > selectedProduct.quantity) {
+                            _showMessage(
+                              context,
+                              'Only ${selectedProduct.quantity} panels are in stock.',
                             );
-                          } else {
-                            context.read<CustomerController>().addWatts(
-                              party.id,
-                              wattsDelta,
+                            return;
+                          }
+
+                          if (paid > total) {
+                            _showMessage(
+                              context,
+                              'Paid amount cannot be more than total.',
                             );
+                            return;
+                          }
+
+                          final created = await context
+                              .read<TransactionController>()
+                              .addTransaction(
+                                kind: widget.kind,
+                                contactId: _selectedContactId!,
+                                productId: _selectedProductId!,
+                                quantity: qty,
+                                amountPaid: paid,
+                              );
+                          if (!context.mounted) return;
+                          if (created == null) {
+                            _showMessage(
+                              context,
+                              'Could not save. Check stock and payment amount.',
+                            );
+                            return;
                           }
 
                           context.read<ActivityController>().add(
-                            type: widget.type == TransactionType.purchase
+                            type: isPurchase
                                 ? ActivityType.purchase
                                 : ActivityType.sale,
-                            title: widget.type == TransactionType.purchase
+                            title: isPurchase
                                 ? 'Purchase recorded'
                                 : 'Sale recorded',
                             subtitle:
-                                '${party.name} · ${formatWatts(wattsDelta)}',
+                                '${created.contactName} - ${formatWatts(created.totalWatts)}',
                           );
 
                           _quantityController.text = '1';
@@ -263,10 +300,24 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '${widget.type == TransactionType.purchase ? 'Purchase' : 'Sale'} saved.',
+                                '${isPurchase ? 'Purchase' : 'Sale'} saved.',
                               ),
                             ),
                           );
+
+                          // Auto-generate/share invoice after save.
+                          try {
+                            await InvoiceService.shareInvoice(tx: created);
+                          } catch (_) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Could not share invoice on this platform.',
+                                ),
+                              ),
+                            );
+                          }
                         },
                         child: const Text('Save'),
                       ),
@@ -286,7 +337,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                for (final t in tx.byType(widget.type).take(12)) ...[
+                for (final t in tx.byKind(widget.kind).take(12)) ...[
                   _TransactionCard(t: t),
                   const SizedBox(height: 10),
                 ],
@@ -331,11 +382,104 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
+  Future<void> _createParty(BuildContext context) async {
+    final contactsController = context.read<ContactsController>();
+    final messenger = ScaffoldMessenger.of(context);
+    final isSupplier = widget.kind == TransactionKind.purchase;
+    final label = isSupplier ? 'Supplier' : 'Customer';
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    try {
+      final shouldSave = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text('Add $label'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'Name'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Name required'
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      hintText: 'Phone (optional)',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                ),
+                onPressed: () {
+                  final valid = formKey.currentState?.validate() ?? false;
+                  if (!valid) return;
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldSave != true || !mounted) return;
+
+      final created = await contactsController.addContact(
+        name: nameController.text,
+        phone: phoneController.text,
+        isSupplier: isSupplier,
+      );
+
+      if (!mounted) return;
+      setState(() => _selectedContactId = created.id);
+      messenger.showSnackBar(
+        SnackBar(content: Text('$label ${created.code} added.')),
+      );
+    } finally {
+      nameController.dispose();
+      phoneController.dispose();
+    }
+  }
+
   String? _validatePositiveInt(String? v) {
     if (v == null || v.trim().isEmpty) return 'Required';
     final parsed = int.tryParse(v.trim());
     if (parsed == null) return 'Enter a number';
     if (parsed <= 0) return 'Must be > 0';
+    return null;
+  }
+
+  String? _validateQuantity(String? v, Product? selectedProduct) {
+    final positiveError = _validatePositiveInt(v);
+    if (positiveError != null) return positiveError;
+
+    final qty = int.parse(v!.trim());
+    if (widget.kind == TransactionKind.sale &&
+        selectedProduct != null &&
+        qty > selectedProduct.quantity) {
+      return 'Only ${selectedProduct.quantity} in stock';
+    }
+
     return null;
   }
 
@@ -345,6 +489,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
     if (parsed == null) return 'Enter a number';
     if (parsed < 0) return 'Must be >= 0';
     return null;
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -405,22 +555,22 @@ class _HeaderStat extends StatelessWidget {
 
 class _ComputedRow extends StatelessWidget {
   const _ComputedRow({
-    required this.panel,
+    required this.product,
     required this.qtyText,
     required this.paidText,
   });
 
   final String qtyText;
   final String paidText;
-  final SolarPanel panel;
+  final Product product;
 
   @override
   Widget build(BuildContext context) {
     final qty = int.tryParse(qtyText.trim()) ?? 0;
     final paid = double.tryParse(paidText.trim()) ?? 0;
 
-    final totalWatts = panel.wattsPerPanel * qty;
-    final totalAmount = panel.pricePerWatt * totalWatts;
+    final totalWatts = product.wattsPerPanel * qty;
+    final totalAmount = product.pricePerWatt * totalWatts;
     final dueRaw = totalAmount - paid;
     final double due = dueRaw < 0 ? 0 : dueRaw;
 
@@ -442,7 +592,7 @@ class _ComputedRow extends StatelessWidget {
 class _TransactionCard extends StatelessWidget {
   const _TransactionCard({required this.t});
 
-  final Transaction t;
+  final SolarTransaction t;
 
   @override
   Widget build(BuildContext context) {
@@ -472,7 +622,7 @@ class _TransactionCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        t.partyName,
+                        t.contactName,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
@@ -482,9 +632,31 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${t.panelName} · ${formatWatts(t.totalWatts)}',
+                  '${t.panelName} - ${formatWatts(t.totalWatts)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF667085),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        await InvoiceService.shareInvoice(tx: t);
+                      } catch (_) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Could not share invoice on this platform.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: const Text('Share Invoice'),
                   ),
                 ),
               ],

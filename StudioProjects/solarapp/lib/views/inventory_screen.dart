@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../controllers/activity_controller.dart';
 import '../controllers/inventory_controller.dart';
 import '../models/activity_log.dart';
-import '../models/solar_panel.dart';
+import '../models/isar/product.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_theme.dart';
 import '../widgets/formatters.dart';
@@ -139,7 +139,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             type: ActivityType.inventory,
                             title: 'New item added',
                             subtitle:
-                                '${_panelNameController.text.trim()} · +$qty qty',
+                                '${_panelNameController.text.trim()} - +$qty qty',
                           );
 
                           _panelNameController.clear();
@@ -220,7 +220,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 class _StockCard extends StatelessWidget {
   const _StockCard({required this.panel});
 
-  final SolarPanel panel;
+  final Product panel;
 
   @override
   Widget build(BuildContext context) {
@@ -268,13 +268,13 @@ class _StockCard extends StatelessWidget {
           IconButton(
             onPressed: () {
               context.read<InventoryController>().adjustStock(
-                panelId: panel.id,
+                productId: panel.id,
                 quantityDelta: 1,
               );
               context.read<ActivityController>().add(
                 type: ActivityType.inventory,
                 title: 'Stock adjusted',
-                subtitle: '${panel.panelName} · +1 qty',
+                subtitle: '${panel.panelName} - +1 qty',
               );
             },
             icon: const Icon(Icons.add_circle_outline),
@@ -284,13 +284,13 @@ class _StockCard extends StatelessWidget {
           IconButton(
             onPressed: () {
               context.read<InventoryController>().adjustStock(
-                panelId: panel.id,
+                productId: panel.id,
                 quantityDelta: -1,
               );
               context.read<ActivityController>().add(
                 type: ActivityType.inventory,
                 title: 'Stock adjusted',
-                subtitle: '${panel.panelName} · -1 qty',
+                subtitle: '${panel.panelName} - -1 qty',
               );
             },
             icon: const Icon(Icons.remove_circle_outline),

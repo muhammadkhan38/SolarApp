@@ -5,22 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/activity_log.dart';
 
 class ActivityController extends ChangeNotifier {
-  final List<ActivityLog> _logs = [
-    ActivityLog(
-      id: 'A-1001',
-      type: ActivityType.sale,
-      title: 'Sale recorded',
-      subtitle: 'Ali Khan · 2,200W',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 35)),
-    ),
-    ActivityLog(
-      id: 'A-1002',
-      type: ActivityType.inventory,
-      title: 'Inventory updated',
-      subtitle: 'Mono Panel A · +8 qty',
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-  ];
+  final List<ActivityLog> _logs = [];
 
   List<ActivityLog> get logs => List.unmodifiable(_logs);
 

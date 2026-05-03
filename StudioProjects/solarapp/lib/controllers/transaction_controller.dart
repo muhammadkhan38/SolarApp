@@ -1,85 +1,141 @@
-import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:isar/isar.dart';
 
-import '../models/transaction.dart';
+import '../models/isar/contact.dart';
+import '../models/isar/product.dart';
+import '../models/isar/solar_transaction.dart';
 
 class TransactionController extends ChangeNotifier {
-  final List<Transaction> _transactions = [
-    Transaction(
-      id: 'T-2001',
-      type: TransactionType.sale,
-      partyId: 'C-001',
-      partyName: 'Ali Khan',
-      panelId: 'P-1001',
-      panelName: 'Mono Panel A',
-      wattsPerPanel: 550,
-      quantity: 4,
-      pricePerWatt: 0.32,
-      paidAmount: 500,
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-    ),
-    Transaction(
-      id: 'T-2002',
-      type: TransactionType.purchase,
-      partyId: 'S-001',
-      partyName: 'SunPower Traders',
-      panelId: 'P-1002',
-      panelName: 'Poly Panel B',
-      wattsPerPanel: 450,
-      quantity: 10,
-      pricePerWatt: 0.28,
-      paidAmount: 0,
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
-
-  List<Transaction> get transactions => List.unmodifiable(_transactions);
-
-  List<Transaction> byType(TransactionType type) {
-    return _transactions.where((t) => t.type == type).toList(growable: false);
+  TransactionController(this._isar) {
+    _sub = _isar.solarTransactions.watchLazy(fireImmediately: true).listen((_) {
+      _load();
+    });
+    _load();
   }
 
-  int get totalCount => _transactions.length;
+  final Isar _isar;
+  late final StreamSubscription<void> _sub;
 
-  double get totalAmount =>
-      _transactions.fold(0, (sum, t) => sum + t.totalAmount);
+  List<SolarTransaction> _transactions = const [];
+  List<SolarTransaction> get transactions => List.unmodifiable(_transactions);
 
-  int totalCountFor(TransactionType type) =>
-      _transactions.where((t) => t.type == type).length;
+  List<SolarTransaction> byKind(TransactionKind kind) {
+    return _transactions.where((t) => t.kind == kind).toList(growable: false);
+  }
 
-  double totalAmountFor(TransactionType type) => _transactions
-      .where((t) => t.type == type)
-      .fold(0, (sum, t) => sum + t.totalAmount);
-
-  void addTransaction({
-    required TransactionType type,
-    required String partyId,
-    required String partyName,
-    required String panelId,
-    required String panelName,
-    required int wattsPerPanel,
-    required int quantity,
-    required double pricePerWatt,
-    required double paidAmount,
+  List<SolarTransaction> byContactCode(
+    String contactCode, {
+    TransactionKind? kind,
   }) {
-    final newId = 'T-${2000 + Random().nextInt(8000)}';
-    _transactions.insert(
-      0,
-      Transaction(
-        id: newId,
-        type: type,
-        partyId: partyId,
-        partyName: partyName,
-        panelId: panelId,
-        panelName: panelName,
-        wattsPerPanel: wattsPerPanel,
-        quantity: quantity,
-        pricePerWatt: pricePerWatt,
-        paidAmount: paidAmount,
-        timestamp: DateTime.now(),
-      ),
-    );
+    return _transactions
+        .where((t) => t.contactCode == contactCode)
+        .where((t) => kind == null || t.kind == kind)
+        .toList(growable: false);
+  }
+
+  int totalCountFor(TransactionKind kind) =>
+      _transactions.where((t) => t.kind == kind).length;
+
+  double totalAmountFor(TransactionKind kind) => _transactions
+      .where((t) => t.kind == kind)
+      .fold(0.0, (sum, t) => sum + t.totalAmount);
+
+  Future<void> _load() async {
+    _transactions = await _isar.solarTransactions
+        .where()
+        .sortByTimestampDesc()
+        .findAll();
     notifyListeners();
+  }
+
+  /// Saves a sale/purchase, updates stock, and applies debit/credit balance.
+  ///
+  /// Formula: NewBalance = OldBalance + (TotalAmount - AmountPaid)
+  Future<SolarTransaction?> addTransaction({
+    required TransactionKind kind,
+    required int contactId,
+    required int productId,
+    required int quantity,
+    required double amountPaid,
+  }) async {
+    if (quantity <= 0 || amountPaid < 0) return null;
+
+    final now = DateTime.now();
+    final txCode = 'TX-${now.millisecondsSinceEpoch % 1000000}';
+
+    SolarTransaction? created;
+
+    await _isar.writeTxn(() async {
+      final contact = await _isar.contacts.get(contactId);
+      final product = await _isar.products.get(productId);
+      if (contact == null || product == null) return;
+
+      final wattsPerPanel = product.wattsPerPanel;
+      final pricePerWatt = product.pricePerWatt;
+      final totalWatts = wattsPerPanel * quantity;
+      final totalAmount = pricePerWatt * totalWatts;
+      if (kind == TransactionKind.sale && quantity > product.quantity) return;
+      if (amountPaid > totalAmount) return;
+
+      final remaining = (totalAmount - amountPaid);
+      final remainingBalance = remaining < 0 ? 0.0 : remaining;
+
+      // Update balance.
+      contact.currentBalance = contact.currentBalance + remainingBalance;
+
+      // Aggregate watts.
+      contact.totalWatts = contact.totalWatts + totalWatts;
+
+      // If user paid anything now, store in last payment metadata.
+      if (amountPaid > 0) {
+        contact.lastPaymentDate = now;
+        contact.lastPaymentAmount = amountPaid;
+      }
+
+      await _isar.contacts.put(contact);
+
+      // Update stock.
+      final stockDelta = kind == TransactionKind.purchase
+          ? quantity
+          : -quantity;
+      final updatedQty = product.quantity + stockDelta;
+      product.quantity = updatedQty < 0 ? 0 : updatedQty;
+      await _isar.products.put(product);
+
+      // Persist transaction.
+      final t = SolarTransaction()
+        ..code = txCode
+        ..timestamp = now
+        ..kind = kind
+        ..contactCode = contact.code
+        ..contactName = contact.name
+        ..contactPhone = contact.phone
+        ..productCode = product.code
+        ..panelName = product.panelName
+        ..wattsPerPanel = wattsPerPanel
+        ..quantity = quantity
+        ..pricePerWatt = pricePerWatt
+        ..totalAmount = totalAmount
+        ..amountPaid = amountPaid
+        ..remainingBalance = remainingBalance;
+
+      t.contact.value = contact;
+      t.product.value = product;
+
+      await _isar.solarTransactions.put(t);
+      await t.contact.save();
+      await t.product.save();
+      created = t;
+    });
+
+    return created;
+  }
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
   }
 }

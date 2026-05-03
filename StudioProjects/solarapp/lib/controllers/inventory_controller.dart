@@ -1,69 +1,77 @@
-import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:isar/isar.dart';
 
-import '../models/solar_panel.dart';
+import '../models/isar/product.dart';
 
 class InventoryController extends ChangeNotifier {
-  final List<SolarPanel> _panels = [
-    const SolarPanel(
-      id: 'P-1001',
-      panelName: 'Mono Panel A',
-      wattsPerPanel: 550,
-      quantity: 8,
-      pricePerWatt: 0.32,
-    ),
-    const SolarPanel(
-      id: 'P-1002',
-      panelName: 'Poly Panel B',
-      wattsPerPanel: 450,
-      quantity: 3,
-      pricePerWatt: 0.28,
-    ),
-  ];
+  InventoryController(this._isar) {
+    _sub = _isar.products.watchLazy(fireImmediately: true).listen((_) {
+      _load();
+    });
+    _load();
+  }
 
-  List<SolarPanel> get panels => List.unmodifiable(_panels);
+  final Isar _isar;
+  late final StreamSubscription<void> _sub;
 
-  int get totalWatts => _panels.fold(0, (sum, p) => sum + p.totalWatts);
+  List<Product> _products = const [];
+  List<Product> get panels => List.unmodifiable(_products);
+
+  int get totalWatts => _products.fold(0, (sum, p) => sum + p.totalWatts);
 
   double get totalInventoryValue =>
-      _panels.fold(0, (sum, p) => sum + p.totalValue);
+      _products.fold(0, (sum, p) => sum + p.totalValue);
 
-  SolarPanel? byId(String id) {
+  Product? byCode(String code) {
     try {
-      return _panels.firstWhere((p) => p.id == id);
+      return _products.firstWhere((p) => p.code == code);
     } catch (_) {
       return null;
     }
   }
 
-  void addPanel({
+  Future<void> _load() async {
+    _products = await _isar.products.where().sortByCode().findAll();
+    notifyListeners();
+  }
+
+  Future<void> addPanel({
     required String panelName,
     required int wattsPerPanel,
     required int quantity,
     required double pricePerWatt,
-  }) {
-    final newId = 'P-${1000 + Random().nextInt(9000)}';
-    _panels.insert(
-      0,
-      SolarPanel(
-        id: newId,
-        panelName: panelName.trim(),
-        wattsPerPanel: wattsPerPanel,
-        quantity: quantity,
-        pricePerWatt: pricePerWatt,
-      ),
-    );
-    notifyListeners();
+  }) async {
+    await _isar.writeTxn(() async {
+      final code = 'P-${DateTime.now().millisecondsSinceEpoch % 100000}';
+      final p = Product()
+        ..code = code
+        ..panelName = panelName.trim()
+        ..wattsPerPanel = wattsPerPanel
+        ..quantity = quantity
+        ..pricePerWatt = pricePerWatt;
+
+      await _isar.products.put(p);
+    });
   }
 
-  void adjustStock({required String panelId, required int quantityDelta}) {
-    final index = _panels.indexWhere((p) => p.id == panelId);
-    if (index == -1) return;
+  Future<void> adjustStock({
+    required int productId,
+    required int quantityDelta,
+  }) async {
+    await _isar.writeTxn(() async {
+      final p = await _isar.products.get(productId);
+      if (p == null) return;
+      final updated = p.quantity + quantityDelta;
+      p.quantity = updated < 0 ? 0 : updated;
+      await _isar.products.put(p);
+    });
+  }
 
-    final existing = _panels[index];
-    final updatedQty = max(0, existing.quantity + quantityDelta);
-    _panels[index] = existing.copyWith(quantity: updatedQty);
-    notifyListeners();
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
   }
 }

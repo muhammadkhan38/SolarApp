@@ -6,13 +6,21 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'package:solarapp/main.dart';
+import 'package:solarapp/controllers/auth_controller.dart';
+import 'package:solarapp/views/login_screen.dart';
 
 void main() {
   testWidgets('Shows login screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const SolarInventoryApp());
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthController(),
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Welcome Back'), findsOneWidget);
     expect(find.text('Contact Administrator'), findsOneWidget);

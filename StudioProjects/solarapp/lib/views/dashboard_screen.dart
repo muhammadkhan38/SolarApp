@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/activity_controller.dart';
+import '../controllers/finance_controller.dart';
 import '../controllers/inventory_controller.dart';
 import '../controllers/transaction_controller.dart';
 import '../models/activity_log.dart';
-import '../models/transaction.dart';
+import '../models/isar/solar_transaction.dart';
 import '../widgets/app_card.dart';
 import '../widgets/formatters.dart';
 import '../widgets/summary_card.dart';
@@ -19,12 +20,13 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final inventory = context.watch<InventoryController>();
     final transactions = context.watch<TransactionController>();
+    final finance = context.watch<FinanceController>();
     final activity = context.watch<ActivityController>();
 
     final logsToShow = activity.logs.take(8).toList(growable: false);
 
     final todaySalesAmount = transactions
-        .byType(TransactionType.sale)
+        .byKind(TransactionKind.sale)
         .where((t) {
           final now = DateTime.now();
           return t.timestamp.year == now.year &&
@@ -47,7 +49,16 @@ class DashboardScreen extends StatelessWidget {
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             final isWide = width >= 900;
-            final columns = isWide ? 3 : 2;
+            final summaryColumns = width >= 720
+                ? 3
+                : width >= 520
+                ? 2
+                : 1;
+            final summaryAspectRatio = summaryColumns == 1
+                ? 3.2
+                : isWide
+                ? 2.7
+                : 2.15;
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -55,12 +66,12 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GridView.count(
-                    crossAxisCount: columns,
+                    crossAxisCount: summaryColumns,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: isWide ? 2.7 : 2.4,
+                    childAspectRatio: summaryAspectRatio,
                     children: [
                       SummaryCard(
                         title: 'Total Watts',
@@ -73,7 +84,19 @@ class DashboardScreen extends StatelessWidget {
                         icon: Icons.trending_up,
                         valueColor: AppColors.success,
                       ),
-                      if (isWide)
+                      SummaryCard(
+                        title: 'Total Pending Amount',
+                        value: formatCurrency(finance.totalPendingAmount),
+                        icon: Icons.account_balance_wallet_outlined,
+                        valueColor: AppColors.danger,
+                      ),
+                      SummaryCard(
+                        title: 'Total Payable Amount',
+                        value: formatCurrency(finance.totalPayableAmount),
+                        icon: Icons.payments_outlined,
+                        valueColor: AppColors.danger,
+                      ),
+                      if (summaryColumns == 3)
                         SummaryCard(
                           title: 'Inventory Value',
                           value: formatCurrency(inventory.totalInventoryValue),
@@ -90,7 +113,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _QuickActionsGrid(
-                    isWide: isWide,
+                    width: width,
                     onTap: (route) => Navigator.of(context).pushNamed(route),
                   ),
                   const SizedBox(height: 18),
@@ -123,9 +146,9 @@ class DashboardScreen extends StatelessWidget {
 }
 
 class _QuickActionsGrid extends StatelessWidget {
-  const _QuickActionsGrid({required this.isWide, required this.onTap});
+  const _QuickActionsGrid({required this.width, required this.onTap});
 
-  final bool isWide;
+  final double width;
   final void Function(String route) onTap;
 
   @override
@@ -158,7 +181,19 @@ class _QuickActionsGrid extends StatelessWidget {
       ),
     ];
 
-    final crossAxisCount = isWide ? 5 : 2;
+    final isWide = width >= 900;
+    final crossAxisCount = isWide
+        ? 5
+        : width >= 620
+        ? 3
+        : width >= 420
+        ? 2
+        : 1;
+    final aspectRatio = isWide
+        ? 1.2
+        : crossAxisCount == 1
+        ? 4.2
+        : 2.6;
 
     return GridView.count(
       crossAxisCount: crossAxisCount,
@@ -166,7 +201,7 @@ class _QuickActionsGrid extends StatelessWidget {
       crossAxisSpacing: 12,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: isWide ? 1.2 : 2.6,
+      childAspectRatio: aspectRatio,
       children: [
         for (final item in items)
           InkWell(
@@ -201,6 +236,8 @@ class _QuickActionsGrid extends StatelessWidget {
                             item.title,
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const Icon(Icons.chevron_right),
@@ -256,6 +293,8 @@ class _ActivityRow extends StatelessWidget {
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(
@@ -263,15 +302,21 @@ class _ActivityRow extends StatelessWidget {
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: const Color(0xFF667085)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           formatTimestamp(log.timestamp),
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: const Color(0xFF667085)),
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          softWrap: false,
         ),
       ],
     );
