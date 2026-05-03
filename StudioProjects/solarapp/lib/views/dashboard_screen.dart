@@ -11,6 +11,9 @@ import '../widgets/app_card.dart';
 import '../widgets/formatters.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/app_theme.dart';
+import '../widgets/app_page.dart';
+import '../widgets/app_section_header.dart';
+import '../widgets/app_spacing.dart';
 import 'routes.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -36,110 +39,90 @@ class DashboardScreen extends StatelessWidget {
         .fold<double>(0, (sum, t) => sum + t.totalAmount);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Dashboard',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final isWide = width >= 900;
-            final summaryColumns = width >= 720
-                ? 3
-                : width >= 520
-                ? 2
-                : 1;
-            final summaryAspectRatio = summaryColumns == 1
-                ? 3.2
-                : isWide
-                ? 2.7
-                : 2.15;
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isWide = width >= 900;
+          final summaryColumns = width >= 720
+              ? 3
+              : width >= 520
+              ? 2
+              : 1;
+          final summaryAspectRatio = summaryColumns == 1
+              ? 3.2
+              : isWide
+              ? 2.7
+              : 2.15;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GridView.count(
-                    crossAxisCount: summaryColumns,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: summaryAspectRatio,
+          return AppPage(
+            scroll: true,
+            maxWidth: AppBreakpoints.ultraWide,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GridView.count(
+                  crossAxisCount: summaryColumns,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: summaryAspectRatio,
+                  children: [
+                    SummaryCard(
+                      title: 'Total Watts',
+                      value: formatWatts(inventory.totalWatts),
+                      icon: Icons.solar_power,
+                    ),
+                    SummaryCard(
+                      title: "Today's Sales",
+                      value: formatCurrency(todaySalesAmount),
+                      icon: Icons.trending_up,
+                      valueColor: AppColors.success,
+                    ),
+                    SummaryCard(
+                      title: 'Total Pending Amount',
+                      value: formatCurrency(finance.totalPendingAmount),
+                      icon: Icons.account_balance_wallet_outlined,
+                      valueColor: AppColors.danger,
+                    ),
+                    SummaryCard(
+                      title: 'Total Payable Amount',
+                      value: formatCurrency(finance.totalPayableAmount),
+                      icon: Icons.payments_outlined,
+                      valueColor: AppColors.danger,
+                    ),
+                    if (summaryColumns == 3)
+                      SummaryCard(
+                        title: 'Inventory Value',
+                        value: formatCurrency(inventory.totalInventoryValue),
+                        icon: Icons.inventory_2_outlined,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const AppSectionHeader(title: 'Quick Actions'),
+                _QuickActionsGrid(
+                  width: width,
+                  onTap: (route) => Navigator.of(context).pushNamed(route),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const AppSectionHeader(title: 'Recent Activity'),
+                AppCard(
+                  child: Column(
                     children: [
-                      SummaryCard(
-                        title: 'Total Watts',
-                        value: formatWatts(inventory.totalWatts),
-                        icon: Icons.solar_power,
-                      ),
-                      SummaryCard(
-                        title: "Today's Sales",
-                        value: formatCurrency(todaySalesAmount),
-                        icon: Icons.trending_up,
-                        valueColor: AppColors.success,
-                      ),
-                      SummaryCard(
-                        title: 'Total Pending Amount',
-                        value: formatCurrency(finance.totalPendingAmount),
-                        icon: Icons.account_balance_wallet_outlined,
-                        valueColor: AppColors.danger,
-                      ),
-                      SummaryCard(
-                        title: 'Total Payable Amount',
-                        value: formatCurrency(finance.totalPayableAmount),
-                        icon: Icons.payments_outlined,
-                        valueColor: AppColors.danger,
-                      ),
-                      if (summaryColumns == 3)
-                        SummaryCard(
-                          title: 'Inventory Value',
-                          value: formatCurrency(inventory.totalInventoryValue),
-                          icon: Icons.inventory_2_outlined,
-                        ),
+                      for (var i = 0; i < logsToShow.length; i++) ...[
+                        _ActivityRow(log: logsToShow[i]),
+                        if (i != logsToShow.length - 1)
+                          const Divider(height: 18),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Quick Actions',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _QuickActionsGrid(
-                    width: width,
-                    onTap: (route) => Navigator.of(context).pushNamed(route),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Recent Activity',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  AppCard(
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < logsToShow.length; i++) ...[
-                          _ActivityRow(log: logsToShow[i]),
-                          if (i != logsToShow.length - 1)
-                            const Divider(height: 18),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

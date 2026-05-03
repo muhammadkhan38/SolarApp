@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
+import '../widgets/app_page.dart';
 import '../widgets/app_theme.dart';
+import '../widgets/app_spacing.dart';
 import 'routes.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -31,129 +33,115 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.watch<AuthController>();
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final maxWidth = constraints.maxWidth;
-            final contentWidth = maxWidth > 520 ? 520.0 : double.infinity;
-
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: contentWidth),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome Back',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Login to manage inventory, purchases and sales.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: const Color(0xFF667085)),
-                        ),
-                        const SizedBox(height: 22),
-                        TextFormField(
-                          controller: _usernameController,
-                          decoration: const InputDecoration(
-                            hintText: 'Username or Phone',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Enter username or phone';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscure,
-                          decoration: InputDecoration(
-                            hintText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Enter password';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: auth.rememberMe,
-                              activeColor: AppColors.primaryBlue,
-                              onChanged: (v) => auth.setRememberMe(v ?? false),
-                            ),
-                            const Text('Remember me'),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            onPressed: () async {
-                              final valid =
-                                  _formKey.currentState?.validate() ?? false;
-                              if (!valid) return;
-
-                              final ok = await context
-                                  .read<AuthController>()
-                                  .login(
-                                    usernameOrPhone: _usernameController.text,
-                                    password: _passwordController.text,
-                                  );
-                              if (!context.mounted) return;
-
-                              if (ok) {
-                                Navigator.of(
-                                  context,
-                                ).pushReplacementNamed(AppRoutes.dashboard);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Invalid login details.'),
-                                  ),
-                                );
-                              }
-                            },
-                            child: const Text('Contact Administrator'),
-                          ),
-                        ),
-                      ],
-                    ),
+      body: AppPage(
+        scroll: true,
+        maxWidth: AppBreakpoints.narrow,
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Welcome Back',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Login to manage inventory, purchases and sales.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 22),
+                TextFormField(
+                  controller: _usernameController,
+                  textInputAction: TextInputAction.next,
+                  keyboardType: TextInputType.text,
+                  autofillHints: const [AutofillHints.username],
+                  decoration: const InputDecoration(
+                    hintText: 'Username or Phone',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Enter username or phone';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: _passwordController,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  obscureText: _obscure,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      tooltip: _obscure ? 'Show password' : 'Hide password',
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Enter password';
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => _submit(auth),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: auth.rememberMe,
+                      onChanged: (v) => auth.setRememberMe(v ?? false),
+                    ),
+                    const Text('Remember me'),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => _submit(auth),
+                    child: const Text('Contact Administrator'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _submit(AuthController auth) async {
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) return;
+
+    final ok = await auth.login(
+      usernameOrPhone: _usernameController.text,
+      password: _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Invalid login details.')));
   }
 }

@@ -8,7 +8,9 @@ import '../models/activity_log.dart';
 import '../models/isar/contact.dart';
 import '../models/isar/solar_transaction.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_page.dart';
 import '../widgets/app_theme.dart';
+import '../widgets/app_spacing.dart';
 import '../widgets/formatters.dart';
 
 enum LedgerType { customer, supplier }
@@ -49,52 +51,48 @@ class _LedgerScreenState extends State<LedgerScreen> {
         .toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-      ),
+      appBar: AppBar(title: Text(title)),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Colors.white,
         onPressed: () => _createContact(context),
         icon: const Icon(Icons.person_add_alt_1_outlined),
         label: Text(
           widget.type == LedgerType.customer ? 'Add Customer' : 'Add Supplier',
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  hintText: 'Search by ID, name, phone',
-                  prefixIcon: Icon(Icons.search),
-                ),
+      body: AppPage(
+        maxWidth: AppBreakpoints.wide,
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Search by ID, name, phone',
+                prefixIcon: Icon(Icons.search),
               ),
-              const SizedBox(height: 12),
-              Expanded(
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
                 child: filtered.isEmpty
                     ? Center(
+                        key: const ValueKey('empty'),
                         child: Text(
                           q.isEmpty
                               ? 'No ${widget.type == LedgerType.customer ? 'customers' : 'suppliers'} yet.'
                               : 'No matching records.',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: const Color(0xFF667085)),
+                              ?.copyWith(color: AppColors.textMuted),
                         ),
                       )
                     : ListView.separated(
+                        key: const ValueKey('list'),
                         itemCount: filtered.length,
                         separatorBuilder: (_, index) =>
-                            const SizedBox(height: 10),
+                            const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (context, index) {
                           final p = filtered[index];
                           return _LedgerCard(
@@ -110,8 +108,8 @@ class _LedgerScreenState extends State<LedgerScreen> {
                         },
                       ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -152,9 +150,6 @@ class _LedgerScreenState extends State<LedgerScreen> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-              ),
               onPressed: () {
                 final v = double.tryParse(controller.text.trim());
                 Navigator.of(context).pop(v);
@@ -231,9 +226,6 @@ class _LedgerScreenState extends State<LedgerScreen> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                ),
                 onPressed: () {
                   final valid = formKey.currentState?.validate() ?? false;
                   if (!valid) return;

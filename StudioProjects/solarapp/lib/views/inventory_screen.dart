@@ -6,7 +6,10 @@ import '../controllers/inventory_controller.dart';
 import '../models/activity_log.dart';
 import '../models/isar/product.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_page.dart';
+import '../widgets/app_section_header.dart';
 import '../widgets/app_theme.dart';
+import '../widgets/app_spacing.dart';
 import '../widgets/formatters.dart';
 import '../widgets/status_badge.dart';
 
@@ -38,164 +41,137 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final inventory = context.watch<InventoryController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Inventory',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 980;
+      appBar: AppBar(title: const Text('Inventory')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= AppBreakpoints.wide;
 
-            final form = AppCard(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Add New Item',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _panelNameController,
-                      decoration: const InputDecoration(hintText: 'Panel name'),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Panel name required'
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _wattsController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              hintText: 'Watts',
-                            ),
-                            validator: _validatePositiveInt,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _quantityController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              hintText: 'Quantity',
-                            ),
-                            validator: _validatePositiveInt,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _priceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Price per Watt',
-                      ),
-                      validator: _validatePositiveDouble,
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: () {
-                          final ok = _formKey.currentState?.validate() ?? false;
-                          if (!ok) return;
-
-                          final watts = int.parse(_wattsController.text);
-                          final qty = int.parse(_quantityController.text);
-                          final price = double.parse(_priceController.text);
-
-                          context.read<InventoryController>().addPanel(
-                            panelName: _panelNameController.text,
-                            wattsPerPanel: watts,
-                            quantity: qty,
-                            pricePerWatt: price,
-                          );
-
-                          context.read<ActivityController>().add(
-                            type: ActivityType.inventory,
-                            title: 'New item added',
-                            subtitle:
-                                '${_panelNameController.text.trim()} - +$qty qty',
-                          );
-
-                          _panelNameController.clear();
-                          _wattsController.clear();
-                          _quantityController.clear();
-                          _priceController.clear();
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Item added.')),
-                          );
-                        },
-                        child: const Text('Add Item'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-
-            final list = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Stock List',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+          final form = AppCard(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppSectionHeader(title: 'Add New Item'),
+                  TextFormField(
+                    controller: _panelNameController,
+                    decoration: const InputDecoration(hintText: 'Panel name'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Panel name required'
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 10),
-                for (final panel in inventory.panels) ...[
-                  _StockCard(panel: panel),
-                  const SizedBox(height: 10),
-                ],
-              ],
-            );
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _wattsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(hintText: 'Watts'),
+                          validator: _validatePositiveInt,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _quantityController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: 'Quantity',
+                          ),
+                          validator: _validatePositiveInt,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _priceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Price per Watt',
+                    ),
+                    validator: _validatePositiveDouble,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        final ok = _formKey.currentState?.validate() ?? false;
+                        if (!ok) return;
 
-            if (isWide) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+                        final watts = int.parse(_wattsController.text);
+                        final qty = int.parse(_quantityController.text);
+                        final price = double.parse(_priceController.text);
+
+                        context.read<InventoryController>().addPanel(
+                          panelName: _panelNameController.text,
+                          wattsPerPanel: watts,
+                          quantity: qty,
+                          pricePerWatt: price,
+                        );
+
+                        context.read<ActivityController>().add(
+                          type: ActivityType.inventory,
+                          title: 'New item added',
+                          subtitle:
+                              '${_panelNameController.text.trim()} - +$qty qty',
+                        );
+
+                        _panelNameController.clear();
+                        _wattsController.clear();
+                        _quantityController.clear();
+                        _priceController.clear();
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Item added.')),
+                        );
+                      },
+                      child: const Text('Add Item'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          final list = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppSectionHeader(title: 'Stock List'),
+              for (final panel in inventory.panels) ...[
+                _StockCard(panel: panel),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ],
+          );
+
+          final content = isWide
+              ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(flex: 4, child: form),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(flex: 6, child: list),
                   ],
-                ),
-              );
-            }
+                )
+              : Column(
+                  children: [
+                    form,
+                    const SizedBox(height: AppSpacing.md),
+                    list,
+                  ],
+                );
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(children: [form, const SizedBox(height: 14), list]),
-            );
-          },
-        ),
+          return AppPage(
+            scroll: true,
+            maxWidth: AppBreakpoints.ultraWide,
+            child: content,
+          );
+        },
       ),
     );
   }
