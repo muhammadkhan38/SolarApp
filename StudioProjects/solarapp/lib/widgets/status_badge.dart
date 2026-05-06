@@ -10,6 +10,8 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final (bg, fg) = switch (kind) {
       StatusBadgeKind.success => (
         AppColors.success.withValues(alpha: 0.12),
@@ -20,8 +22,8 @@ class StatusBadge extends StatelessWidget {
         AppColors.danger,
       ),
       StatusBadgeKind.neutral => (
-        const Color(0xFFEFF1F5),
-        const Color(0xFF4B5563),
+        theme.colorScheme.surfaceContainerHighest,
+        theme.colorScheme.onSurfaceVariant,
       ),
     };
 
@@ -33,7 +35,7 @@ class StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        style: theme.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w700,
           color: fg,
         ),

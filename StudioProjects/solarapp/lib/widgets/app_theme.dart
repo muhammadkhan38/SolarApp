@@ -3,30 +3,62 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const primaryBlue = Color(0xFF4489F7);
   static const backgroundGray = Color(0xFFF8F9FB);
-  static const textMuted = Color(0xFF667085);
-  static const hintMuted = Color(0xFF9AA3AE);
   static const success = Color(0xFF2E7D32);
   static const danger = Color(0xFFC62828);
 }
 
 class AppTheme {
-  static ThemeData light() {
+  static ThemeData light() => _theme(Brightness.light);
+
+  static ThemeData dark() => _theme(Brightness.dark);
+
+  static ThemeData _theme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primaryBlue,
-      primary: AppColors.primaryBlue,
-      surface: Colors.white,
+      brightness: brightness,
     );
 
-    return ThemeData(
+    final scaffoldBg = isDark ? colorScheme.surface : AppColors.backgroundGray;
+
+    const fieldPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 14);
+
+    final base = ThemeData(
       useMaterial3: true,
+      brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.backgroundGray,
-      fontFamily: 'Roboto',
       visualDensity: VisualDensity.standard,
+      fontFamily: 'Roboto',
+    );
+
+    return base.copyWith(
+      scaffoldBackgroundColor: scaffoldBg,
+      dividerTheme: DividerThemeData(color: colorScheme.outlineVariant),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 2,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      cardTheme: CardThemeData(
+        color: colorScheme.surface,
+        elevation: isDark ? 0.5 : 1.5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: EdgeInsets.zero,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
-        hintStyle: const TextStyle(color: AppColors.hintMuted),
+        fillColor: isDark
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surface,
+        hintStyle: TextStyle(
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -47,29 +79,23 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.error, width: 1.4),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 1.5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: EdgeInsets.zero,
-      ),
-      dividerTheme: DividerThemeData(color: colorScheme.outlineVariant),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 2,
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: fieldPadding,
       ),
       filledButtonTheme: FilledButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: WidgetStateProperty.all(const Size.fromHeight(48)),
+          padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           minimumSize: WidgetStateProperty.all(const Size.fromHeight(48)),
           padding: WidgetStateProperty.all(
@@ -103,8 +129,8 @@ class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
-        backgroundColor: AppColors.backgroundGray,
-        surfaceTintColor: AppColors.backgroundGray,
+        backgroundColor: scaffoldBg,
+        surfaceTintColor: scaffoldBg,
         elevation: 0,
         titleTextStyle: TextStyle(
           color: colorScheme.onSurface,

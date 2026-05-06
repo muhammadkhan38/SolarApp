@@ -9,8 +9,8 @@ import '../models/isar/contact.dart';
 import '../models/isar/solar_transaction.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_page.dart';
-import '../widgets/app_theme.dart';
 import '../widgets/app_spacing.dart';
+import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 
 enum LedgerType { customer, supplier }
@@ -71,28 +71,30 @@ class _LedgerScreenState extends State<LedgerScreen> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.xs),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
                 switchInCurve: Curves.easeOut,
                 switchOutCurve: Curves.easeIn,
                 child: filtered.isEmpty
-                    ? Center(
+                    ? AppEmptyState(
                         key: const ValueKey('empty'),
-                        child: Text(
-                          q.isEmpty
-                              ? 'No ${widget.type == LedgerType.customer ? 'customers' : 'suppliers'} yet.'
-                              : 'No matching records.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textMuted),
-                        ),
+                        icon: widget.type == LedgerType.customer
+                            ? Icons.people_outline
+                            : Icons.store_mall_directory_outlined,
+                        title: q.isEmpty
+                            ? 'No ${widget.type == LedgerType.customer ? 'customers' : 'suppliers'} yet'
+                            : 'No matching records',
+                        message: q.isEmpty
+                            ? 'Add your first ${widget.type == LedgerType.customer ? 'customer' : 'supplier'} to start tracking balances.'
+                            : 'Try a different name, code, or phone number.',
                       )
                     : ListView.separated(
                         key: const ValueKey('list'),
                         itemCount: filtered.length,
                         separatorBuilder: (_, index) =>
-                            const SizedBox(height: AppSpacing.sm),
+                            const SizedBox(height: AppSpacing.xs),
                         itemBuilder: (context, index) {
                           final p = filtered[index];
                           return _LedgerCard(
@@ -130,37 +132,13 @@ class _LedgerScreenState extends State<LedgerScreen> {
         ? 'Receive Now'
         : 'Pay Now';
 
-    final controller = TextEditingController(
-      text: contact.currentBalance.toStringAsFixed(0),
-    );
-
     final amount = await showDialog<double>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(label),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(hintText: 'Amount'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final v = double.tryParse(controller.text.trim());
-                Navigator.of(context).pop(v);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
+      builder: (dialogContext) => _AmountEntryDialog(
+        title: label,
+        initialText: contact.currentBalance.toStringAsFixed(0),
+      ),
     );
-    controller.dispose();
 
     if (amount == null) return;
     if (amount <= 0) return;
@@ -186,80 +164,30 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final isSupplier = widget.type == LedgerType.supplier;
     final label = isSupplier ? 'Supplier' : 'Customer';
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
 
-    try {
-      final shouldSave = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: Text('Add $label'),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(hintText: 'Name'),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Name required'
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      hintText: 'Phone (optional)',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final valid = formKey.currentState?.validate() ?? false;
-                  if (!valid) return;
-                  Navigator.of(dialogContext).pop(true);
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      );
+    final draft = await showDialog<_ContactDraft>(
+      context: context,
+      builder: (dialogContext) => _AddContactDialog(label: label),
+    );
 
-      if (shouldSave != true || !mounted) return;
+    if (draft == null || !mounted) return;
 
-      final created = await contactsController.addContact(
-        name: nameController.text,
-        phone: phoneController.text,
-        isSupplier: isSupplier,
-      );
+    final created = await contactsController.addContact(
+      name: draft.name,
+      phone: draft.phone,
+      isSupplier: isSupplier,
+    );
 
-      if (!mounted) return;
-      activityController.add(
-        type: ActivityType.inventory,
-        title: '$label added',
-        subtitle: '${created.name} - ${created.code}',
-      );
+    if (!mounted) return;
+    activityController.add(
+      type: ActivityType.inventory,
+      title: '$label added',
+      subtitle: '${created.name} - ${created.code}',
+    );
 
-      messenger.showSnackBar(
-        SnackBar(content: Text('$label ${created.code} added.')),
-      );
-    } finally {
-      nameController.dispose();
-      phoneController.dispose();
-    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('$label ${created.code} added.')),
+    );
   }
 
   Future<void> _showTransactions(BuildContext context, Contact contact) async {
@@ -358,16 +286,16 @@ class _LedgerCard extends StatelessWidget {
               Text(
                 party.code,
                 style: theme.textTheme.labelLarge?.copyWith(
-                  color: const Color(0xFF667085),
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.xs),
           Wrap(
-            spacing: 18,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children: [
               _KeyValue(
                 label: 'Total Watts',
@@ -389,31 +317,18 @@ class _LedgerCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
                   onPressed: onHistoryOrders,
                   child: Text(label2),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
                   onPressed: onPayReceiveNow,
                   child: Text(label1),
                 ),
@@ -422,6 +337,129 @@ class _LedgerCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AmountEntryDialog extends StatefulWidget {
+  const _AmountEntryDialog({required this.title, required this.initialText});
+
+  final String title;
+  final String initialText;
+
+  @override
+  State<_AmountEntryDialog> createState() => _AmountEntryDialogState();
+}
+
+class _AmountEntryDialogState extends State<_AmountEntryDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(hintText: 'Amount'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final v = double.tryParse(_controller.text.trim());
+            Navigator.of(context).pop(v);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContactDraft {
+  const _ContactDraft({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
+}
+
+class _AddContactDialog extends StatefulWidget {
+  const _AddContactDialog({required this.label});
+
+  final String label;
+
+  @override
+  State<_AddContactDialog> createState() => _AddContactDialogState();
+}
+
+class _AddContactDialogState extends State<_AddContactDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Add ${widget.label}'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(hintText: 'Name'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Name required' : null,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(hintText: 'Phone (optional)'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final valid = _formKey.currentState?.validate() ?? false;
+            if (!valid) return;
+            Navigator.of(context).pop(
+              _ContactDraft(
+                name: _nameController.text,
+                phone: _phoneController.text,
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }
@@ -439,9 +477,9 @@ class _KeyValue extends StatelessWidget {
       children: [
         Text(
           label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF667085)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 2),
         Text(

@@ -1,16 +1,18 @@
 import 'package:flutter/widgets.dart';
 
 class AppSpacing {
-  static const double xs = 6;
-  static const double sm = 10;
-  static const double md = 14;
-  static const double lg = 18;
-  static const double xl = 24;
+  // 8pt-based spacing system (with 4pt for fine-grained adjustments).
+  static const double xxs = 4;
+  static const double xs = 8;
+  static const double sm = 16;
+  static const double md = 24;
+  static const double lg = 32;
+  static const double xl = 48;
 }
 
 class AppInsets {
   static const EdgeInsets page = EdgeInsets.all(16);
-  static const EdgeInsets card = EdgeInsets.all(14);
+  static const EdgeInsets card = EdgeInsets.all(16);
 }
 
 class AppBreakpoints {

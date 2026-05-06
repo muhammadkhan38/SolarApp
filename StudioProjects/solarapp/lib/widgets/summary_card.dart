@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'app_card.dart';
-import 'app_theme.dart';
 
 class SummaryCard extends StatelessWidget {
   const SummaryCard({
@@ -41,7 +40,7 @@ class SummaryCard extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMuted,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 6),

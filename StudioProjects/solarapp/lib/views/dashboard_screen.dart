@@ -13,6 +13,7 @@ import '../widgets/summary_card.dart';
 import '../widgets/app_theme.dart';
 import '../widgets/app_page.dart';
 import '../widgets/app_section_header.dart';
+import '../widgets/app_states.dart';
 import '../widgets/app_spacing.dart';
 import 'routes.dart';
 
@@ -63,8 +64,8 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 GridView.count(
                   crossAxisCount: summaryColumns,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
+                  mainAxisSpacing: AppSpacing.xs,
+                  crossAxisSpacing: AppSpacing.xs,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   childAspectRatio: summaryAspectRatio,
@@ -109,15 +110,22 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 const AppSectionHeader(title: 'Recent Activity'),
                 AppCard(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < logsToShow.length; i++) ...[
-                        _ActivityRow(log: logsToShow[i]),
-                        if (i != logsToShow.length - 1)
-                          const Divider(height: 18),
-                      ],
-                    ],
-                  ),
+                  child: logsToShow.isEmpty
+                      ? const AppEmptyState(
+                          title: 'No recent activity',
+                          message:
+                              'New inventory updates, sales, and payments will show up here.',
+                          icon: Icons.history,
+                        )
+                      : Column(
+                          children: [
+                            for (var i = 0; i < logsToShow.length; i++) ...[
+                              _ActivityRow(log: logsToShow[i]),
+                              if (i != logsToShow.length - 1)
+                                const Divider(height: 18),
+                            ],
+                          ],
+                        ),
                 ),
               ],
             ),
@@ -180,8 +188,8 @@ class _QuickActionsGrid extends StatelessWidget {
 
     return GridView.count(
       crossAxisCount: crossAxisCount,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
+      mainAxisSpacing: AppSpacing.xs,
+      crossAxisSpacing: AppSpacing.xs,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: aspectRatio,
@@ -196,7 +204,7 @@ class _QuickActionsGrid extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(item.icon, color: AppColors.primaryBlue),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(item.title, textAlign: TextAlign.center),
                       ],
                     )
@@ -213,7 +221,7 @@ class _QuickActionsGrid extends StatelessWidget {
                           ),
                           child: Icon(item.icon, color: AppColors.primaryBlue),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.xs),
                         Expanded(
                           child: Text(
                             item.title,
@@ -248,6 +256,8 @@ class _ActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final icon = switch (log.type) {
       ActivityType.inventory => Icons.inventory_2_outlined,
       ActivityType.purchase => Icons.shopping_cart_outlined,
@@ -266,25 +276,25 @@ class _ActivityRow extends StatelessWidget {
           ),
           child: Icon(icon, color: AppColors.primaryBlue),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 log.title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(
                 log.subtitle,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF667085)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -294,9 +304,9 @@ class _ActivityRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           formatTimestamp(log.timestamp),
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF667085)),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           maxLines: 1,
           overflow: TextOverflow.fade,
           softWrap: false,

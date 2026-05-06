@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
 import '../widgets/app_page.dart';
-import '../widgets/app_theme.dart';
 import '../widgets/app_spacing.dart';
 import 'routes.dart';
 
@@ -52,11 +51,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Login to manage inventory, purchases and sales.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _usernameController,
                   textInputAction: TextInputAction.next,
@@ -73,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs),
                 TextFormField(
                   controller: _passwordController,
                   textInputAction: TextInputAction.done,
@@ -98,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   onFieldSubmitted: (_) => _submit(auth),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
                     Checkbox(
@@ -108,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Text('Remember me'),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(

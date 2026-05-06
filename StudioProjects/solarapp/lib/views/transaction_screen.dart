@@ -90,7 +90,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: AppCard(
                   child: _HeaderStat(
@@ -138,7 +138,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       label: Text('Add $partyLabel'),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   DropdownButtonFormField<int>(
                     // ignore: deprecated_member_use
                     value: selectedProductId,
@@ -160,7 +160,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     decoration: const InputDecoration(hintText: 'Select Panel'),
                     validator: (v) => (v == null) ? 'Select panel' : null,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
                       Expanded(
@@ -175,7 +175,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: TextFormField(
                           controller: _paidController,
@@ -200,7 +200,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         : Column(
                             key: const ValueKey('computed'),
                             children: [
-                              const SizedBox(height: AppSpacing.md),
+                              const SizedBox(height: AppSpacing.sm),
                               _ComputedRow(
                                 product: selectedProduct,
                                 qtyText: _quantityController.text,
@@ -209,7 +209,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             ],
                           ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -325,12 +325,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
               ? Column(
                   children: [
                     header,
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(flex: 4, child: form),
-                        const SizedBox(width: AppSpacing.md),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(flex: 6, child: list),
                       ],
                     ),
@@ -339,9 +339,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
               : Column(
                   children: [
                     header,
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     form,
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     list,
                   ],
                 );
@@ -361,75 +361,25 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final isSupplier = widget.kind == TransactionKind.purchase;
     final label = isSupplier ? 'Supplier' : 'Customer';
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
 
-    try {
-      final shouldSave = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: Text('Add $label'),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(hintText: 'Name'),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Name required'
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      hintText: 'Phone (optional)',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final valid = formKey.currentState?.validate() ?? false;
-                  if (!valid) return;
-                  Navigator.of(dialogContext).pop(true);
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      );
+    final draft = await showDialog<_PartyDraft>(
+      context: context,
+      builder: (dialogContext) => _AddPartyDialog(label: label),
+    );
 
-      if (shouldSave != true || !mounted) return;
+    if (draft == null || !mounted) return;
 
-      final created = await contactsController.addContact(
-        name: nameController.text,
-        phone: phoneController.text,
-        isSupplier: isSupplier,
-      );
+    final created = await contactsController.addContact(
+      name: draft.name,
+      phone: draft.phone,
+      isSupplier: isSupplier,
+    );
 
-      if (!mounted) return;
-      setState(() => _selectedContactId = created.id);
-      messenger.showSnackBar(
-        SnackBar(content: Text('$label ${created.code} added.')),
-      );
-    } finally {
-      nameController.dispose();
-      phoneController.dispose();
-    }
+    if (!mounted) return;
+    setState(() => _selectedContactId = created.id);
+    messenger.showSnackBar(
+      SnackBar(content: Text('$label ${created.code} added.')),
+    );
   }
 
   String? _validatePositiveInt(String? v) {
@@ -497,7 +447,7 @@ class _HeaderStat extends StatelessWidget {
           ),
           child: Icon(icon, color: AppColors.primaryBlue),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,10 +455,10 @@ class _HeaderStat extends StatelessWidget {
               Text(
                 title,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textMuted,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xxs),
               Text(
                 value,
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -518,6 +468,82 @@ class _HeaderStat extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PartyDraft {
+  const _PartyDraft({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
+}
+
+class _AddPartyDialog extends StatefulWidget {
+  const _AddPartyDialog({required this.label});
+
+  final String label;
+
+  @override
+  State<_AddPartyDialog> createState() => _AddPartyDialogState();
+}
+
+class _AddPartyDialogState extends State<_AddPartyDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Add ${widget.label}'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(hintText: 'Name'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Name required' : null,
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(hintText: 'Phone (optional)'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final valid = _formKey.currentState?.validate() ?? false;
+            if (!valid) return;
+            Navigator.of(context).pop(
+              _PartyDraft(
+                name: _nameController.text,
+                phone: _phoneController.text,
+              ),
+            );
+          },
+          child: const Text('Save'),
         ),
       ],
     );
@@ -546,10 +572,10 @@ class _ComputedRow extends StatelessWidget {
     final double due = dueRaw < 0 ? 0 : dueRaw;
 
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: AppInsets.card,
       child: Wrap(
-        spacing: 18,
-        runSpacing: 8,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
         children: [
           _KeyValue(label: 'Watts', value: formatWatts(totalWatts)),
           _KeyValue(label: 'Total', value: formatCurrency(totalAmount)),
@@ -604,11 +630,11 @@ class _TransactionCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   '${t.panelName} - ${formatWatts(t.totalWatts)}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
@@ -633,7 +659,7 @@ class _TransactionCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.xs),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -646,9 +672,9 @@ class _TransactionCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 formatTimestamp(t.timestamp),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -666,21 +692,23 @@ class _KeyValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     );

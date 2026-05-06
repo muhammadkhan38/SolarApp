@@ -45,6 +45,8 @@ class SolarInventoryApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Solar Inventory',
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.system,
         initialRoute: AppRoutes.login,
         routes: {
           AppRoutes.login: (_) => const LoginScreen(),
