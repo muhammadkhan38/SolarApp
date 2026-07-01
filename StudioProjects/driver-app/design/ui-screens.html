@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prince Limousine — Driver App UI</title>
+<style>
+  :root{
+    --bg:#0E0E10; --surface:#1A1A1D; --surface2:#161619;
+    --gold:#C9A24B; --gold-soft:#E3C77E;
+    --text:#FFFFFF; --muted:rgba(255,255,255,.55); --faint:rgba(255,255,255,.38);
+    --line:rgba(255,255,255,.12);
+    --assigned:#C9A24B; --enroute:#4F9DDE; --progress:#3FB37F; --completed:#7E8A97; --declined:#D9534F;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#17171b 0%,#0a0a0c 60%);
+       font-family:var(--font);color:var(--text);padding:48px 24px 80px}
+  .board-head{max-width:1200px;margin:0 auto 40px;text-align:center}
+  .board-head .logo{color:var(--gold);letter-spacing:5px;font-weight:700;font-size:13px}
+  .board-head h1{margin:8px 0 6px;font-size:30px;font-weight:700;letter-spacing:.5px}
+  .board-head p{margin:0;color:var(--muted);font-size:14px}
+  .legend{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+  .legend span{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .grid{max-width:1320px;margin:0 auto;display:flex;flex-wrap:wrap;gap:44px 36px;justify-content:center}
+  .device{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .caption{color:var(--muted);font-size:13px;letter-spacing:.3px}
+  .caption b{color:var(--gold-soft);font-weight:600}
+
+  /* phone frame */
+  .phone{width:330px;height:690px;background:var(--bg);border-radius:42px;position:relative;
+         border:1px solid #2a2a2e;box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 0 0 6px #050506;overflow:hidden}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:26px;
+         background:#050506;border-radius:0 0 18px 18px;z-index:30}
+  .screen{position:absolute;inset:6px;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;background:var(--bg)}
+  .statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 22px 0 26px;
+             font-size:12px;color:#fff;font-weight:600;flex:0 0 auto}
+  .statusbar .right{display:flex;gap:6px;align-items:center}
+  .bars{display:inline-block;width:16px;height:10px;background:
+        linear-gradient(to right,#fff 0 3px,transparent 3px 4px,#fff 4px 7px,transparent 7px 8px,#fff 8px 11px,transparent 11px 12px,#fff 12px 16px)}
+  .batt{width:20px;height:10px;border:1px solid #fff;border-radius:2px;position:relative}
+  .batt:after{content:"";position:absolute;right:-3px;top:2px;width:2px;height:6px;background:#fff;border-radius:1px}
+  .batt:before{content:"";position:absolute;inset:1px;width:70%;background:var(--gold)}
+
+  .appbar{height:50px;display:flex;align-items:center;gap:10px;padding:0 16px;flex:0 0 auto}
+  .appbar h2{font-size:18px;margin:0;font-weight:700}
+  .appbar .spacer{flex:1}
+  .body{flex:1;overflow:hidden;padding:4px 16px 16px}
+  .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ic.gold{color:var(--gold)} .ic.muted{color:var(--faint)}
+
+  /* generic */
+  .card{background:var(--surface);border-radius:16px;padding:16px;margin-bottom:12px}
+  .badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid}
+  .row{display:flex;align-items:center}
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .kicker{color:var(--faint);font-size:11px;letter-spacing:1.5px}
+  .small{font-size:12px}
+  .line-item{display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:13.5px;line-height:1.35}
+  .btn{height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+       font-weight:700;font-size:15px;cursor:default}
+  .btn-gold{background:var(--gold);color:#111}
+  .btn-out{border:1px solid var(--gold);color:var(--gold-soft);background:transparent}
+  .btn-danger{border:1px solid var(--declined);color:var(--declined);background:transparent}
+  .field{height:50px;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+         display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--muted);font-size:14px;margin-bottom:14px}
+
+  /* splash */
+  .center-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .spinner{width:30px;height:30px;border-radius:50%;border:3px solid rgba(201,162,75,.25);border-top-color:var(--gold);margin-top:26px;
+           animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* map */
+  .map{height:200px;position:relative;background:#12161c;flex:0 0 auto;overflow:hidden}
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .live-chip{position:absolute;top:10px;left:10px;background:rgba(63,179,127,.18);border:1px solid var(--progress);
+             color:#9be7c4;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;display:flex;gap:6px;align-items:center;z-index:5}
+  .blink{width:8px;height:8px;border-radius:50%;background:var(--progress);animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .actionbar{flex:0 0 auto;background:var(--surface2);border-top:1px solid var(--line);padding:12px 16px}
+
+  .avatar{width:88px;height:88px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;
+          color:var(--gold);font-size:34px;font-weight:700;margin:8px auto 12px}
+  .kv{display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+  .kv .k{width:74px;color:var(--muted);font-size:13px}
+  .kv .v{flex:1;font-size:14px;font-weight:500}
+  .divider{height:1px;background:var(--line);margin:0 -16px}
+  .footer{max-width:1200px;margin:60px auto 0;text-align:center;color:var(--faint);font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- icon defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16l1.5-5a2 2 0 0 1 1.9-1.4h7.2A2 2 0 0 1 18.5 11L20 16M4 16h16v3a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1M5 20H7a1 1 0 0 0 1-1v0M7 16h10"/><circle cx="7.5" cy="16.5" r="1.2"/><circle cx="16.5" cy="16.5" r="1.2"/></symbol>
+    <symbol id="i-profile" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-origin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-time" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M9 12h6"/></symbol>
+    <symbol id="i-pay" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 13l1 4v3a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="i-veh" viewBox="0 0 24 24"><path d="M5 16l1.5-5a2 2 0 0 1 1.9-1.4h7.2A2 2 0 0 1 18.5 11L20 16M4 16h16v3h-3M8 19H4v-3"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8-8-2z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+    <symbol id="i-badge" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8 17a4 4 0 0 1 8 0"/></symbol>
+  </defs>
+</svg>
+
+<div class="board-head">
+  <div class="logo">PRINCE LIMOUSINE</div>
+  <h1>Driver App — UI Screens</h1>
+  <p>All screens of the Flutter driver app, matching the Laravel <code>/api/v1/driver</code> contract.</p>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--assigned)"></i>Assigned</span>
+    <span><i class="dot" style="background:var(--enroute)"></i>En route / Arrived</span>
+    <span><i class="dot" style="background:var(--progress)"></i>In progress</span>
+    <span><i class="dot" style="background:var(--completed)"></i>Completed</span>
+    <span><i class="dot" style="background:var(--declined)"></i>Declined</span>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- 1 SPLASH -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="center-col">
+        <svg class="ic gold" style="width:60px;height:60px"><use href="#i-car"/></svg>
+        <div style="letter-spacing:2px;font-weight:700;font-size:18px;margin-top:10px">PRINCE LIMOUSINE</div>
+        <div style="letter-spacing:4px;color:var(--gold-soft);font-size:12px">DRIVER</div>
+        <div class="spinner"></div>
+      </div>
+    </div></div>
+    <div class="caption"><b>1.</b> Splash / session restore</div>
+  </div>
+
+  <!-- 2 LOGIN -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="body" style="display:flex;flex-direction:column;justify-content:center;padding:0 24px">
+        <div style="text-align:center;margin-bottom:24px">
+          <svg class="ic gold" style="width:52px;height:52px"><use href="#i-car"/></svg>
+          <div style="letter-spacing:2px;font-weight:700;font-size:18px;margin-top:8px">PRINCE LIMOUSINE</div>
+          <div style="color:var(--gold-soft);font-size:13px;letter-spacing:1px">Driver sign in</div>
+        </div>
+        <div class="field"><svg class="ic muted"><use href="#i-mail"/></svg>marcus@princelimousine.test</div>
+        <div class="field"><svg class="ic muted"><use href="#i-badge"/></svg>•••••••••</div>
+        <div class="btn btn-gold" style="margin-top:6px">Sign in</div>
+      </div>
+    </div></div>
+    <div class="caption"><b>2.</b> Login — Sanctum <code>POST /login</code></div>
+  </div>
+
+  <!-- 3 TRIPS LIST -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="appbar"><h2>My trips</h2><div class="spacer"></div><svg class="ic" style="width:24px;height:24px"><use href="#i-profile"/></svg></div>
+      <div class="body">
+        <!-- card assigned -->
+        <div class="card">
+          <div class="row"><b style="letter-spacing:.5px">PL-AB12CD34</b><span class="spacer" style="flex:1"></span>
+            <span class="badge" style="color:var(--assigned);border-color:rgba(201,162,75,.5);background:rgba(201,162,75,.16)">Assigned</span></div>
+          <div class="kicker" style="margin-top:5px">SUV</div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-origin"/></svg><span>JFK Airport, Terminal 4</span></div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-pin"/></svg><span>The Plaza, Manhattan</span></div>
+          <div class="line-item faint small"><svg class="ic muted"><use href="#i-clock"/></svg><span>Wed, Jul 1 • 2:00 PM</span></div>
+        </div>
+        <!-- card en route -->
+        <div class="card">
+          <div class="row"><b style="letter-spacing:.5px">PL-9F3K2M</b><span class="spacer" style="flex:1"></span>
+            <span class="badge" style="color:var(--enroute);border-color:rgba(79,157,222,.5);background:rgba(79,157,222,.16)">En route</span></div>
+          <div class="kicker" style="margin-top:5px">SEDAN</div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-origin"/></svg><span>Times Square</span></div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-pin"/></svg><span>Newark Liberty Airport</span></div>
+          <div class="line-item faint small"><svg class="ic muted"><use href="#i-clock"/></svg><span>Wed, Jul 1 • 3:30 PM</span></div>
+        </div>
+        <!-- card in progress -->
+        <div class="card">
+          <div class="row"><b style="letter-spacing:.5px">PL-7Q2X1A</b><span class="spacer" style="flex:1"></span>
+            <span class="badge" style="color:var(--progress);border-color:rgba(63,179,127,.5);background:rgba(63,179,127,.16)">In progress</span></div>
+          <div class="kicker" style="margin-top:5px">SPRINTER</div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-origin"/></svg><span>Brooklyn Heights</span></div>
+          <div class="line-item"><svg class="ic muted"><use href="#i-pin"/></svg><span>LaGuardia Airport</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="caption"><b>3.</b> My trips — <code>GET /bookings</code> (polled)</div>
+  </div>
+
+  <!-- 4 EMPTY -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="appbar"><h2>My trips</h2><div class="spacer"></div><svg class="ic" style="width:24px;height:24px"><use href="#i-profile"/></svg></div>
+      <div class="center-col" style="padding:0 30px">
+        <svg class="ic" style="width:54px;height:54px;color:rgba(255,255,255,.3)"><use href="#i-clock"/></svg>
+        <div class="muted" style="text-align:center;margin-top:14px;line-height:1.5">No active trips, Marcus.<br>New assignments appear here.</div>
+      </div>
+    </div></div>
+    <div class="caption"><b>4.</b> My trips — empty state</div>
+  </div>
+
+  <!-- 5 DETAIL ASSIGNED -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="appbar"><svg class="ic" style="width:22px;height:22px"><use href="#i-arrow"/></svg><h2 style="font-size:17px">Trip detail</h2></div>
+      <div class="map">
+        <svg viewBox="0 0 330 200" preserveAspectRatio="xMidYMid slice">
+          <rect width="330" height="200" fill="#12161c"/>
+          <path d="M-10 60 H340 M-10 130 H340 M70 -10 V210 M210 -10 V210" stroke="#222b34" stroke-width="6"/>
+          <path d="M70 130 Q120 130 120 90 T210 60" stroke="#C9A24B" stroke-width="3" fill="none" stroke-dasharray="2 6"/>
+          <circle cx="70" cy="130" r="7" fill="#3FB37F" stroke="#0E0E10" stroke-width="2"/>
+          <g transform="translate(210,60)"><path d="M0 6 C-8 -2 -8 -12 0 -16 C8 -12 8 -2 0 6Z" fill="#C9A24B"/></g>
+        </svg>
+      </div>
+      <div class="body" style="overflow:hidden">
+        <div class="row" style="margin-bottom:2px"><b style="font-size:17px">PL-AB12CD34</b><span style="flex:1"></span>
+          <span class="badge" style="color:var(--assigned);border-color:rgba(201,162,75,.5);background:rgba(201,162,75,.16)">Assigned</span></div>
+        <div class="kicker" style="margin-bottom:10px">SUV</div>
+        <div class="card" style="padding:6px 16px">
+          <div class="kv"><svg class="ic gold"><use href="#i-origin"/></svg><div class="k">Pickup</div><div class="v">JFK Airport, T4</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-pin"/></svg><div class="k">Drop-off</div><div class="v">The Plaza, Manhattan</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-time"/></svg><div class="k">Hours</div><div class="v">3 · Total $585.00</div></div>
+        </div>
+        <div class="card" style="padding:10px 16px">
+          <div class="row"><svg class="ic gold"><use href="#i-user"/></svg>
+            <span style="margin-left:10px;font-weight:500">Olivia Bennett</span><span style="flex:1"></span>
+            <span class="btn-out" style="height:34px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><svg class="ic"><use href="#i-phone"/></svg>Call</span></div>
+        </div>
+      </div>
+      <div class="actionbar">
+        <div class="row" style="gap:12px">
+          <div class="btn btn-danger" style="flex:1">Decline</div>
+          <div class="btn btn-gold" style="flex:2">Accept trip</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="caption"><b>5.</b> Trip detail — Assigned (accept / decline)</div>
+  </div>
+
+  <!-- 6 DETAIL IN PROGRESS -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="appbar"><svg class="ic" style="width:22px;height:22px"><use href="#i-arrow"/></svg><h2 style="font-size:17px">Trip detail</h2></div>
+      <div class="map">
+        <div class="live-chip"><span class="blink"></span>Live GPS · sharing</div>
+        <svg viewBox="0 0 330 200" preserveAspectRatio="xMidYMid slice">
+          <rect width="330" height="200" fill="#12161c"/>
+          <path d="M-10 70 H340 M-10 140 H340 M90 -10 V210 M230 -10 V210" stroke="#222b34" stroke-width="6"/>
+          <path d="M60 150 Q150 150 150 100 T270 70" stroke="#3FB37F" stroke-width="3" fill="none"/>
+          <circle cx="60" cy="150" r="7" fill="#3FB37F" stroke="#0E0E10" stroke-width="2"/>
+          <g transform="translate(270,70)"><path d="M0 6 C-8 -2 -8 -12 0 -16 C8 -12 8 -2 0 6Z" fill="#C9A24B"/></g>
+          <circle cx="150" cy="100" r="9" fill="#4F9DDE" stroke="#0E0E10" stroke-width="3"/>
+        </svg>
+      </div>
+      <div class="body" style="overflow:hidden">
+        <div class="row" style="margin-bottom:2px"><b style="font-size:17px">PL-7Q2X1A</b><span style="flex:1"></span>
+          <span class="badge" style="color:var(--progress);border-color:rgba(63,179,127,.5);background:rgba(63,179,127,.16)">In progress</span></div>
+        <div class="kicker" style="margin-bottom:10px">SPRINTER</div>
+        <div class="card" style="padding:6px 16px">
+          <div class="kv"><svg class="ic gold"><use href="#i-origin"/></svg><div class="k">Pickup</div><div class="v">Brooklyn Heights</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-pin"/></svg><div class="k">Drop-off</div><div class="v">LaGuardia Airport</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-pay"/></svg><div class="k">Total</div><div class="v">$420.00</div></div>
+        </div>
+        <div class="btn btn-out"><svg class="ic"><use href="#i-nav"/></svg>Open in Maps</div>
+      </div>
+      <div class="actionbar">
+        <div class="btn btn-gold"><svg class="ic" style="stroke:#111"><use href="#i-arrow"/></svg>Complete trip</div>
+      </div>
+    </div></div>
+    <div class="caption"><b>6.</b> Trip detail — In progress (live GPS + advance)</div>
+  </div>
+
+  <!-- 7 PROFILE -->
+  <div class="device">
+    <div class="phone"><div class="notch"></div><div class="screen">
+      <div class="statusbar"><span>9:41</span><span class="right"><i class="bars"></i><i class="batt"></i></span></div>
+      <div class="appbar"><svg class="ic" style="width:22px;height:22px"><use href="#i-arrow"/></svg><h2>Profile</h2></div>
+      <div class="body">
+        <div class="avatar">M</div>
+        <div style="text-align:center;font-size:20px;font-weight:700">Marcus Reed</div>
+        <div class="row" style="justify-content:center;gap:7px;margin-top:4px"><i class="dot" style="background:#3FB37F"></i><span class="muted small">online</span></div>
+        <div class="card" style="padding:4px 16px;margin-top:22px">
+          <div class="kv"><svg class="ic gold"><use href="#i-mail"/></svg><div class="k">Email</div><div class="v">marcus@princelimousine.test</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-phone"/></svg><div class="k">Phone</div><div class="v">+1 (212) 555-0142</div></div>
+          <div class="divider"></div>
+          <div class="kv"><svg class="ic gold"><use href="#i-badge"/></svg><div class="k">Driver ID</div><div class="v">#1</div></div>
+        </div>
+        <div class="btn btn-danger" style="margin-top:22px">Sign out</div>
+      </div>
+    </div></div>
+    <div class="caption"><b>7.</b> Profile — driver info + logout</div>
+  </div>
+
+</div>
+
+<div class="footer">Prince Limousine Driver · Flutter (Riverpod · go_router · google_maps_flutter) · REST polling, no websockets · mockup of the actual app screens</div>
+
+</body>
+</html>

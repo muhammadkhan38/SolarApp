@@ -1,0 +1,14 @@
+{
+    "yaml.disableSchemaDetection": [
+        "**/.github/workflows/*.yml",
+        "**/.github/workflows/*.yaml",
+        "**/.gitea/workflows/*.yml",
+        "**/.gitea/workflows/*.yaml",
+        "**/.forgejo/workflows/*.yml",
+        "**/.forgejo/workflows/*.yaml"
+    ],
+    "yaml.schemas": {
+        "file:///c%3A/Users/khan8338/.vscode/extensions/docsmsft.docs-yaml-1.0.6/dist/toc.schema.json": "/toc\\.yml/i",
+        "https://www.schemastore.org/pubspec.json": "file:///c%3A/Users/khan8338/StudioProjects/driver-app/pubspec.yaml"
+    }
+}

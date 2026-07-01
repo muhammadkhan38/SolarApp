@@ -1,0 +1,45 @@
+name: prince_driver
+description: Prince Limousine — Driver app (Android & iOS) for the A2Z Black Car dispatch system.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Networking (Laravel Sanctum API)
+  dio: ^5.7.0
+
+  # Secure token storage
+  flutter_secure_storage: ^10.3.1
+
+  # Maps & location (live GPS ping)
+  google_maps_flutter: ^2.10.0
+  geolocator: ^13.0.1
+
+  # Call the customer / open navigation
+  url_launcher: ^6.3.0
+
+  # Dates
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
